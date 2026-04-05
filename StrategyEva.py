@@ -16,4 +16,5 @@ if __name__ == "__main__":
     TradeTable.upload()
     S = Simulator(session)
     S.getData()
-    print(S.tradeDetails)
+    S.restore()
+    # print(S.tradeDetails)
