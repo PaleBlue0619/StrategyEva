@@ -1,0 +1,55 @@
+{
+  "statistics": {
+    "tradeDateCol": "TradeDate",
+    "cashCol": "cash",
+    "commCol": "comm",
+    "stockCashCol": "stockCash",
+    "stockCommCol": "stockComm",
+    "futureCashCol": "futureCash",
+    "futureCommCol": "futureComm",
+    "futureMarginCol": "futureMargin",
+    "profitCol": "profit",
+    "stockProfitCol": "stockProfit",
+    "futureProfitCol": "futureProfit",
+    "realTimeProfitCol": "realTimeProfit",
+    "stockRealTimeProfitCol": "stockRealTimeProfit",
+    "futureRealTimeProfitCol": "futureRealTimeProfit"
+  },
+  "orderDetails": {
+    "orderNumCol": "tradeNum",
+    "orderTimeCol": "create_timestamp",
+    "directionCol": "direction",
+    "stateCol": "state",
+    "symbolCol": "symbol",
+    "volCol": "vol",
+    "priceCol": "price",
+    "reasonCol": "reason",
+    "reasonState": {
+      "openLong": "openLong",
+      "closeLong": "closeLong",
+      "openShort": "openShort",
+      "closeShort": "closeShort"
+    }
+  },
+  "tradeDetails": {
+    "tradeNumCol": "tradeNum",
+    "tradeTimeCol": "tradeTime",
+    "stateCol": "state",  // open/close
+    "directionCol": "direction",
+    "symbolCol": "symbol",
+    "priceCol": "price",
+    "volCol": "vol",
+    "reasonCol": "reason",
+    "reasonState": {
+      "openLong": "openLong",
+      "closeLong": "closeLong",
+      "openShort": "openShort",
+      "closeShort": "closeShort",
+      "staticHigh": "静态最高价",
+      "staticLow": "静态最低价",
+      "dynamicHigh": "动态最高价",
+      "dynamicLow": "动态最低价",
+      "maxPosTime": "最长持仓时间"
+    }
+  }
+}
