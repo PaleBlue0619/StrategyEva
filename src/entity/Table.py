@@ -20,56 +20,42 @@ class Statistics(Table):
     def fromDict(self, cfg: Dict):
         self.cfg = cfg
 
-    @override
     def upload(self):   # 上传 + 改名
         colDict: Dict[str, str] = {self.cfg[i]: str(i).replace("Col") for i in self.cfg.keys() if "Col" in i}
+        self.data.rename(columns=colDict)
         self.session.upload({self.tableName: self.data})
-        self.session.upload({"colNames": list(colDict.keys())})
-        self.session.upload({"targetNames": list(colDict.values())})
-        self.session.run(f"""
-            {self.tableName} = <select _$$colNames as _$$targetNames from {self.tableName}>.eval();
-        """)
 
 class OrderDetails(Table):
     def __init__(self, session: ddb.session, data: pd.DataFrame):
-        super().__init__(session, data)
+        super().__init__(session, "orderDetails", data)
         self.tableName: str = "orderDetails"
         self.cfg: Dict = {}
 
     def fromDict(self, cfg: Dict):
         self.cfg = cfg
 
-    @override
     def upload(self):   # 规范状态名称 +上传 + 改名
-        colDict: Dict[str, str] = {i: str(i).replace("Col") for i in self.cfg.keys() if "Col" in i}
+        colDict: Dict[str, str] = {i: str(i).replace("Col","") for i in self.cfg.keys() if "Col" in i}
         self.data[self.cfg["reasonCol"]] = self.data[self.cfg["reasonCol"]].map(
-            {j: i for i, j in self.cfg["stateDict"].items()})
-        self.session.upload({"colNames": list(colDict.keys())})
-        self.session.upload({"targetNames": list(colDict.values())})
-        self.session.run(f"""
-            {self.tableName} = <select _$$colNames as _$$targetNames from {self.tableName}>.eval();
-        """)
+            {j: i for i, j in self.cfg["reasonState"].items()})
+        self.data.rename(columns=colDict)
+        self.session.upload({self.tableName: self.data})
 
 class TradeDetails(Table):
-    def __init__(self, session: ddb.session, tableName: str, data: pd.DataFrame):
-        super().__init__(session, tableName, data)
+    def __init__(self, session: ddb.session, data: pd.DataFrame):
+        super().__init__(session, "tradeDetails", data)
         self.tableName: str = "tradeDetails"
         self.cfg: Dict = {}
 
     def fromDict(self, cfg: Dict):
         self.cfg = cfg
 
-    @override
-    def upload(self): # 规范状态名称 +上传 + 改名
-        colDict: Dict[str, str] = {i: str(i).replace("Col") for i in self.cfg.keys() if "Col" in i}
+    def upload(self):   # 规范状态名称 +上传 + 改名
+        colDict: Dict[str, str] = {i: str(i).replace("Col","") for i in self.cfg.keys() if "Col" in i}
         self.data[self.cfg["reasonCol"]] = self.data[self.cfg["reasonCol"]].map(
-            {j: i for i, j in self.cfg["stateDict"].items()})
-        self.session.upload({"colNames": list(colDict.keys())})
-        self.session.upload({"targetNames": list(colDict.values())})
-        self.session.run(f"""
-            {self.tableName} = <select _$$colNames as _$$targetNames from {self.tableName}>.eval();
-            update {self.tableName} set reasonState = nullFill(stateDict[reasonState],reasonState);
-        """)
+            {j: i for i, j in self.cfg["reasonState"].items()})
+        self.data.rename(columns=colDict)
+        self.session.upload({self.tableName: self.data})
 
     def groupByOrder(self):
         """订单聚合"""
