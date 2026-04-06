@@ -41,7 +41,7 @@ class Statistics(Table):
         """)
 
     def upload_(self):   # 上传 + 改名
-        colDict: Dict[str, str] = {self.cfg[i]: str(i).replace("Col", "") for i in self.cfg.keys() if "Col" in i}
+        colDict: Dict[str, str] = {self.cfg["indicator"][i]: str(i).replace("Col", "") for i in self.cfg["indicator"]}
         self.data.rename(columns=colDict, inplace=True)
         self.data = self.data[list(colDict.values())]
         self.session.upload({"tab": self.data})
@@ -68,9 +68,9 @@ class OrderDetails(Table):
         """)
 
     def upload_(self):   # 规范状态名称 + dmlStr + 上传 + 改名
-        colDict: Dict[str, str] = {self.cfg[i]: str(i).replace("Col", "") for i in self.cfg.keys() if "Col" in i}
-        self.data[self.cfg["reasonCol"]] = self.data[self.cfg["reasonCol"]].map(
-            {j: i for i, j in self.cfg["reasonState"].items()})
+        colDict: Dict[str, str] = {self.cfg["indicator"][i]: str(i).replace("Col", "") for i in self.cfg["indicator"]}
+        reasonCol = self.cfg["indicator"]["reasonCol"]
+        self.data[reasonCol] = self.data[reasonCol].map({j: i for i, j in self.cfg["reasonState"].items()})
         self.data.rename(columns=colDict, inplace=True)
         self.data = self.data[list(colDict.values())]
         self.session.upload({"tab": self.data})
@@ -99,9 +99,9 @@ class TradeDetails(Table):
         """)
 
     def upload_(self):   # 规范状态名称 + dmlStr + 上传 + 改名
-        colDict: Dict[str, str] = {self.cfg[i]: str(i).replace("Col", "") for i in self.cfg.keys() if "Col" in i}
-        self.data[self.cfg["reasonCol"]] = self.data[self.cfg["reasonCol"]].map(
-            {j: i for i, j in self.cfg["reasonState"].items()})
+        colDict: Dict[str, str] = {self.cfg["indicator"][i]: str(i).replace("Col", "") for i in self.cfg["indicator"]}
+        reasonCol = self.cfg["indicator"]["reasonCol"]
+        self.data[reasonCol] = self.data[reasonCol].map({j: i for i, j in self.cfg["reasonState"].items()})
         self.data.rename(columns=colDict, inplace=True)
         self.data = self.data[list(colDict.values())]
         self.session.upload({"tab": self.data})
