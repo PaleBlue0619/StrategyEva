@@ -9,7 +9,8 @@ if __name__ == "__main__":
     with open(r".\src\cons\format.json5", "r", encoding="utf-8") as f:
         cfg = json5.load(f)
     tradeDetails = pd.read_excel(r"E:\Quant\PyBackTest\test\classVoteStrategy\TradeDetails(Future).xlsx",index_col=None,header=0)
-    tradeDetails.columns = ["tradeNum","tradeTime","state","direction","symbol","price","vol","reason"]
+    tradeDetails.columns = ["tradeNum","tradeTime","state","direction","symbol","price","vol","margin","profit","commission","reason"]
+    tradeDetails["symbol"] = tradeDetails["symbol"].apply(lambda x:str(x).split(".")[0].replace(str(x).split(".")[0][-4:], ""))
     session = ddb.session("localhost", 8848, "admin", "123456")
     TradeTable = TradeDetails(session, tradeDetails)
     TradeTable.fromDict(cfg=cfg["tradeDetails"])
@@ -17,4 +18,5 @@ if __name__ == "__main__":
     S = Simulator(session)
     S.getData()
     S.restore()
-    # print(S.tradeDetails)
+    print(S.resultDF)
+    S.resultDF.to_excel(r"result.xlsx",index=False)

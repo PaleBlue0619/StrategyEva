@@ -29,7 +29,8 @@
       "closeLong": "closeLong",
       "openShort": "openShort",
       "closeShort": "closeShort"
-    }
+    },
+    "dmlStr": "" // dml语句 -> dataFrame上传至ddb时候执行
   },
   "tradeDetails": {
     "tradeNumCol": "tradeNum",
@@ -39,6 +40,9 @@
     "symbolCol": "symbol",
     "priceCol": "price",
     "volCol": "vol",
+    "marginCol": "margin",
+    "profitCol": null,  // 这里不提供profit -> 就调用Simulator模块还原订单簿进行计算
+    "commCol": "commission", // 手续费列
     "reasonCol": "reason",
     "reasonState": {
       "openLong": "openLong",
@@ -50,6 +54,7 @@
       "dynamicHigh": "动态最高价",
       "dynamicLow": "动态最低价",
       "maxPosTime": "最长持仓时间"
-    }
+    },
+    "dmlStr": "" // dml语句 -> dataFrame上传至ddb时候执行
   }
 }

@@ -34,12 +34,14 @@ class OrderDetails(Table):
     def fromDict(self, cfg: Dict):
         self.cfg = cfg
 
-    def upload(self):   # 规范状态名称 +上传 + 改名
-        colDict: Dict[str, str] = {i: str(i).replace("Col","") for i in self.cfg.keys() if "Col" in i}
+    def upload(self):   # 规范状态名称 + dmlStr +上传 + 改名
+        colDict: Dict[str, str] = {self.cfg[i]: str(i).replace("Col","") for i in self.cfg.keys() if "Col" in i}
         self.data[self.cfg["reasonCol"]] = self.data[self.cfg["reasonCol"]].map(
             {j: i for i, j in self.cfg["reasonState"].items()})
-        self.data.rename(columns=colDict)
+        self.data.rename(columns=colDict, inplace=True)
         self.session.upload({self.tableName: self.data})
+        if self.cfg["dmlStr"] not in ["",None]:
+            self.session.run(self.cfg["dmlStr"])
 
 class TradeDetails(Table):
     def __init__(self, session: ddb.session, data: pd.DataFrame):
@@ -50,17 +52,11 @@ class TradeDetails(Table):
     def fromDict(self, cfg: Dict):
         self.cfg = cfg
 
-    def upload(self):   # 规范状态名称 +上传 + 改名
-        colDict: Dict[str, str] = {i: str(i).replace("Col","") for i in self.cfg.keys() if "Col" in i}
+    def upload(self):   # 规范状态名称 + dmlStr +上传 + 改名
+        colDict: Dict[str, str] = {self.cfg[i]: str(i).replace("Col","") for i in self.cfg.keys() if "Col" in i}
         self.data[self.cfg["reasonCol"]] = self.data[self.cfg["reasonCol"]].map(
             {j: i for i, j in self.cfg["reasonState"].items()})
-        self.data.rename(columns=colDict)
+        self.data.rename(columns=colDict, inplace=True)
         self.session.upload({self.tableName: self.data})
-
-    def groupByOrder(self):
-        """订单聚合"""
-        self.session.run(f"""
-        {self.tableName} = select sum(vol) as vol, 
-                                  first(reason) as reason 
-                          from {self.tableName} group by tradeTime, state, direction, symbol, price
-        """)
+        if self.cfg["dmlStr"] not in ["",None]:
+            self.session.run(self.cfg["dmlStr"])
