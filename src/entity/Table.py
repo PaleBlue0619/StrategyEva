@@ -1,6 +1,7 @@
 import dolphindb as ddb
 import pandas as pd
 from typing import Dict, List
+from src.entity.Simulator import Simulator
 
 class Table:
     def __init__(self, session: ddb.session, data: pd.DataFrame):
@@ -26,11 +27,11 @@ class Statistics(Table):
     def initTable(self):
         """初始化共享内存表"""
         colNames = ["tradeDate", "cash", "comm",
-                    "stockCash", "stockComm", "futureCash", "futureComm", "futureMargin",
+                    "stockCash", "stockComm", "futureCash", "futureComm",
                     "profit", "stockProfit", "futureProfit",
                     "realTimeProfit", "stockRealTimeProfit", "futureRealTimeProfit"]
         colTypes = ["DATE", "DOUBLE", "DOUBLE",
-                    "DOUBLE", "DOUBLE", "DOUBLE", "DOUBLE", "DOUBLE",
+                    "DOUBLE", "DOUBLE", "DOUBLE", "DOUBLE",
                     "DOUBLE", "DOUBLE", "DOUBLE",
                     "DOUBLE", "DOUBLE", "DOUBLE"]
         self.session.upload({"colNames": colNames, "colTypes": colTypes})
@@ -108,3 +109,31 @@ class TradeDetails(Table):
         self.session.run(f"""objByName("{self.tableName}",true).append!(tab); undef(`tab);""")
         if self.cfg["dmlStr"] not in ["", None]:
             self.session.run(self.cfg["dmlStr"])
+
+class PnlDetails(Table, Simulator):
+    def __init__(self, session: ddb.session, data: pd.DataFrame):
+        Table.__init__(self, session, data)
+        Simulator.__init__(self, session)
+        self.tableName: str = "pnlDetails"
+        self.colNames = ["tradeTime", "symbol", "longPnl", "shortPnl", "totalPnl",
+                    "longMargin", "shortMargin", "totalMargin",
+                    "longComm", "shortComm", "totalComm",
+                    "pnlRate", "commRate"]
+        self.colTypes = ["DATE", "SYMBOL", "DOUBLE", "DOUBLE", "DOUBLE",
+                    "DOUBLE", "DOUBLE", "DOUBLE",
+                    "DOUBLE", "DOUBLE", "DOUBLE",
+                    "DOUBLE", "DOUBLE"]
+
+    def initTable(self):
+        """初始化共享内存表"""
+        self.session.upload({"colNames": self.colNames, "colTypes": self.colTypes})
+        self.session.run(f"""
+        try{{undef("{self.tableName}", SHARED)}}catch(ex){{}}; // 先删除共享表
+        tab = table(1:0, colNames, colTypes); 
+        share(tab, "{self.tableName}"); // 创建共享内存表
+        """)
+
+    def upload_(self):
+        self.resultDF = self.resultDF[self.colNames]
+        self.session.upload({"tab": self.resultDF})
+        self.session.run(f"""objByName("{self.tableName}",true).append!(tab); undef(`tab);""")

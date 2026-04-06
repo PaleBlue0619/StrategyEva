@@ -149,7 +149,7 @@ class Simulator(Position):
         self.session: ddb.session = session
         self.tradeDetails: pd.DataFrame = pd.DataFrame()
 
-    def restore(self, hasProfitCol: bool = False) -> None:
+    def restore_(self, hasProfitCol: bool) -> None:
         """还原订单 -> 统计每日每个品种的当日pnl & 累计pnl"""
         self.tradeDetails = self.session.run(f"""select * from tradeDetails""")
         self.tradeDetails["tradeTime"] = self.tradeDetails["tradeTime"].apply(pd.Timestamp)

@@ -10,7 +10,6 @@
       "stockCommCol": "stockComm",
       "futureCashCol": "futureCash",
       "futureCommCol": "futureComm",
-      "futureMarginCol": "futureMargin",
       "profitCol": "profit",
       "stockProfitCol": "stockProfit",
       "futureProfitCol": "futureProfit",
@@ -48,7 +47,7 @@
       "priceCol": "price",
       "volCol": "vol",
       "marginCol": "margin",
-      "profitCol": "profit",  // 这里不提供profit -> 就调用Simulator模块还原订单簿进行计算
+      "profitCol": "profit", // null  // 这里不提供profit -> 就调用Simulator模块还原订单簿进行计算
       "commCol": "commission", // 手续费列
       "reasonCol": "reason"
     },
