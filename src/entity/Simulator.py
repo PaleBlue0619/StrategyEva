@@ -82,6 +82,12 @@ class Position:
                     self.longPos[symbol][0]["vol"] -= vol
                     pnl += vol * (price - pos["price"]) * flag
                     break
+            if symbol not in self.longPnl:
+                self.longPnl[symbol] = 0.0
+            if symbol not in self.longMargin:
+                self.longMargin[symbol] = 0.0
+            if symbol not in self.longComm:
+                self.longComm[symbol] = 0.0
             self.longPnl[symbol] += pnl
             self.longMargin[symbol] = margin
             self.longComm[symbol] += comm
@@ -97,6 +103,12 @@ class Position:
                     self.shortPos[symbol][0]["vol"] -= vol
                     pnl += vol * (pos["price"] - price) * flag
                     break
+            if symbol not in self.shortPnl:
+                self.shortPnl[symbol] = 0.0
+            if symbol not in self.shortMargin:
+                self.shortMargin[symbol] = 0.0
+            if symbol not in self.shortComm:
+                self.shortComm[symbol] = 0.0
             self.shortPnl[symbol] += pnl
             self.shortMargin[symbol] = margin
             self.shortComm[symbol] += comm
@@ -124,32 +136,48 @@ class Position:
         resultDF["commRate"] = (resultDF["totalComm"] / resultDF["totalMargin"]).fillna(0.0)
         self.resultDF = pd.concat([self.resultDF, resultDF], ignore_index=True) # 追加写入
         # 当前状态置0
-        self.longPnl = {i: 0 for i in self.longPnl.keys()}
-        self.shortPnl = {i: 0 for i in self.shortPnl.keys()}
-        self.longMargin = {i: 0 for i in self.longMargin.keys()}
-        self.shortMargin = {i: 0 for i in self.shortMargin.keys()}
-        self.longComm = {i: 0 for i in self.longComm.keys()}
-        self.shortComm = {i: 0 for i in self.shortComm.keys()}
+        self.longPnl = {} # {i: 0 for i in self.longPnl.keys()}
+        self.shortPnl = {} # {i: 0 for i in self.shortPnl.keys()}
+        self.longMargin = {} # {i: 0 for i in self.longMargin.keys()}
+        self.shortMargin = {} # {i: 0 for i in self.shortMargin.keys()}
+        self.longComm = {} # {i: 0 for i in self.longComm.keys()}
+        self.shortComm = {} # {i: 0 for i in self.shortComm.keys()}
 
 class Simulator(Position):
-    def __init__(self, session: ddb.session, precision: float = 1e-8):
+    def __init__(self, session: ddb.session):
         super(Simulator, self).__init__()
-        self.precision: float = precision
         self.session: ddb.session = session
         self.tradeDetails: pd.DataFrame = pd.DataFrame()
 
-    def getData(self):
-        """获取数据"""
-        self.tradeDetails = self.session.run(f"""tradeDetails""")
-        self.tradeDetails["tradeTime"] = self.tradeDetails["tradeTime"].apply(pd.Timestamp)
-
-    def restore(self) -> None:
+    def restore(self, hasProfitCol: bool = False) -> None:
         """还原订单 -> 统计每日每个品种的当日pnl & 累计pnl"""
-        for _, row in self.tradeDetails.iterrows():
-            state = row["state"]
-            if state == "open": # 开仓
-                self.openPos(timestamp=row["tradeTime"], symbol=row["symbol"], direction=row["direction"],
-                          price=row["price"], vol=row["vol"], margin=row["margin"], comm=row["comm"])
-            else:
-                self.closePos(timestamp=row["tradeTime"], symbol=row["symbol"], direction=row["direction"],
-                           price=row["price"], vol=row["vol"], margin=row["margin"], comm=row["comm"])
+        self.tradeDetails = self.session.run(f"""select * from tradeDetails""")
+        self.tradeDetails["tradeTime"] = self.tradeDetails["tradeTime"].apply(pd.Timestamp)
+        if not hasProfitCol:
+            for _, row in self.tradeDetails.iterrows():
+                state = row["state"]
+                if state == "open": # 开仓
+                    self.openPos(timestamp=row["tradeTime"], symbol=row["symbol"], direction=row["direction"],
+                              price=row["price"], vol=row["vol"], margin=row["margin"], comm=row["comm"])
+                else:
+                    self.closePos(timestamp=row["tradeTime"], symbol=row["symbol"], direction=row["direction"],
+                               price=row["price"], vol=row["vol"], margin=row["margin"], comm=row["comm"])
+            self.resultDF = self.resultDF.query("totalPnl!=0").reset_index(drop=True)
+        else:
+            self.resultDF = self.session.run(r"""
+            update tradeDetails set margin = 0.0 where state == "open"; // 确保margin只被统计一次
+            data = select sum(iif(direction == "long", margin, 0)) as longMargin,
+                          sum(iif(direction == "short", margin, 0)) as shortMargin,
+                          sum(iif(direction == "long", profit, 0)) as longPnl,
+                          sum(iif(direction == "short", profit, 0)) as shortPnl,
+                          sum(iif(direction == "long", comm, 0)) as longComm,
+                          sum(iif(direction == "short", comm, 0)) as shortComm
+                          from tradeDetails where state == "close"
+                          group by tradeTime, symbol
+            update data set totalMargin = longMargin + shortMargin
+            update data set totalPnl = longPnl + shortPnl
+            update data set totalComm = longComm + shortComm
+            update data set pnlRate = nullFill(totalPnl\totalMargin, 0.0)
+            update data set commRate = nullFill(totalComm\totalMargin, 0.0)
+            data 
+            """)

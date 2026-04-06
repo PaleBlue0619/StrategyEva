@@ -18,11 +18,11 @@
   "orderDetails": {
     "orderNumCol": "tradeNum",
     "orderTimeCol": "create_timestamp",
+    "symbolCol": "symbol",
     "directionCol": "direction",
     "stateCol": "state",
-    "symbolCol": "symbol",
-    "volCol": "vol",
     "priceCol": "price",
+    "volCol": "vol",
     "reasonCol": "reason",
     "reasonState": {
       "openLong": "openLong",
@@ -34,14 +34,14 @@
   },
   "tradeDetails": {
     "tradeNumCol": "tradeNum",
-    "tradeTimeCol": "tradeTime",
-    "stateCol": "state",  // open/close
-    "directionCol": "direction",
+    "tradeTimeCol": "TradeTime",
     "symbolCol": "symbol",
+    "directionCol": "direction",
+    "stateCol": "state",  // open/close
     "priceCol": "price",
     "volCol": "vol",
     "marginCol": "margin",
-    "profitCol": null,  // 这里不提供profit -> 就调用Simulator模块还原订单簿进行计算
+    "profitCol": "profit",  // 这里不提供profit -> 就调用Simulator模块还原订单簿进行计算
     "commCol": "commission", // 手续费列
     "reasonCol": "reason",
     "reasonState": {
