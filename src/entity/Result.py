@@ -42,3 +42,23 @@ class Result(Statistics, TradeDetails, OrderDetails, PnlDetails, Simulator):
         P.initTable()
         P.restore_(hasProfitCol=hasProfitCol)
         P.upload_()
+
+    def getSymbolList(self, scale: str) -> List[str]:
+        """获取所有标的列表(order/trade)"""
+        if scale == "order":
+            return self.session.run(f"""exec distinct(symbol) from orderDetails""")
+        elif scale == "trade":
+            return self.session.run(f"""exec distinct(symbol) from tradeDetails""")
+        else:
+            return sorted(set(self.getSymbolList(scale="order") + self.getSymbolList(scale="trade")))
+
+    def getDateList(self, scale: str) -> List[pd.Timestamp]:
+        """获取所有时间列表(order/trade/stats)"""
+        if scale == "order":
+            return self.session.run(f"""exec distinct(date(orderTime)) from orderDetails""")
+        elif scale == "trade":
+            return self.session.run(f"""exec distinct(date(tradeTime)) from tradeDetails""")
+        elif scale in ["statistics", "stats"]:
+            return self.session.run(f"""exec distinct(date(tradeDate)) from statistics""")
+        else:
+            return sorted(set(self.getDateList(scale="order") + self.getDateList(scale="trade") + self.getDateList(scale="stats")))

@@ -22,28 +22,30 @@ class Eva(Result):
         self._restore_()
 
     def indicatorStats(self) -> Dict[str, float]:
-        """Part-I: 策略性能指标统计"""
-        resultDict = self.session.run(r"""
+        """
+        Part-I: 策略性能指标统计
+        """
+        resultDict = self.session.run(rf"""
         /* 配置项 */
         runStock = false;
         runFuture = true;
         yearDays = 252;
         monthDays = 22;
-        basicYealyRet = 0.028; // 无风险利率
-        basicDailyRet = power((1+basicYealyRet),(1.0\yearDays)) - 1 
-        if (runFuture == false and runStock == true){
+        basicYearlyRet = 0.028; // 无风险利率
+        basicDailyRet = power((1+basicYearlyRet),(1.0\yearDays)) - 1 
+        if (runFuture == 0 and runStock == 1){{
             statistics_ = select * from statistics where stockProfit!=0
             update statistics_ set profitDiff = deltas(stockProfit)
             update statistics_ set dailyRet = nullFill(profitDiff\prev(stockProfit), 0.0)
-        }else if(runFuture == true and runStock == false){
+        }}else if(runFuture == 1 and runStock == 0){{
             statistics_ = select * from statistics where futureProfit!=0 
             update statistics_ set profitDiff = deltas(futureProfit)
             update statistics_ set dailyRet = nullFill(profitDiff\prev(futureProfit), 0.0)
-        }else{
+        }}else{{
             statistics_ = select * from statistics where profit!=0
             update statistics set profitDiff = deltas(profit)
             update statistics_ set dailyRet = nullFill(profitDiff\prev(profit), 0.0)
-        }
+        }}
         tradeDetails_ = select * from tradeDetails where state="close"
         update statistics set netValue = nullFill((profit-comm)\first(cash),0.0)+1.0; // 计算净值
         
@@ -99,3 +101,106 @@ class Eva(Result):
         resultDict
         """)
         return resultDict
+
+    def summaryPnlStats(self) -> Dict[str, pd.DataFrame]:
+        """
+        PartII-A: 账户整体Pnl分析
+        """
+        resultDict = self.session.run("""
+        // 账户pnl分析
+        resultDict = dict(STRING, ANY)
+        weekPnlSeries = select (last(profit)-first(profit))-(last(comm)-first(comm)) as pnl,last(profit)-first(profit) as profit, last(comm)-first(comm) as comm from statistics group by year(tradeDate) as year,weekOfYear(tradeDate) as week
+        update weekPnlSeries set cumPnl = cumsum(pnl)
+        update weekPnlSeries set cumProfit = cumsum(profit)
+        update weekPnlSeries set cumComm = cumsum(comm)
+        monthPnlSeries = select (last(profit)-first(profit))-(last(comm)-first(comm)) as pnl,last(profit)-first(profit) as profit, last(comm)-first(comm) as comm from statistics group by year(tradeDate) as year,monthOfYear(tradeDate) as month
+        update monthPnlSeries set cumPnl = cumsum(pnl)
+        update monthPnlSeries set cumProfit = cumsum(profit)
+        update monthPnlSeries set cumComm = cumsum(comm)
+        yearPnlSeries = select (last(profit)-first(profit))-(last(comm)-first(comm)) as pnl,last(profit)-first(profit) as profit, last(comm)-first(comm) as comm from statistics group by year(tradeDate) as year
+        update yearPnlSeries set cumPnl = cumsum(pnl)
+        update yearPnlSeries set cumProfit = cumsum(profit)
+        update yearPnlSeries set cumComm = cumsum(comm)
+        resultDict["weekPnl"] = weekPnlSeries;
+        resultDict["monthPnl"] = monthPnlSeries;
+        resultDict["yearPnl"] = yearPnlSeries;
+        resultDict;
+        """)
+        return resultDict
+
+    def pnlStatsBySymbol(self, symbol: str) -> pd.DataFrame:
+        """
+        PartII-B: 分品种Pnl分析
+        """
+        resultDF = self.session.run("""
+        pt = select tradeTime, pnlRate, commRate, longPnl-longComm as longPnl, shortPnl-shortComm as shortPnl, totalPnl-totalComm as totalPnl from pnlDetails where symbol == symbolStr
+        update pt set cumLongPnl = cumsum(longPnl)
+        update pt set cumShortPnl = cumsum(shortPnl)
+        update pt set cumTotalPnl = cumsum(totalPnl)
+        pt
+        """)
+        return resultDF
+
+    def pnlStatsByPeriod(self, startDate: pd.Timestamp, endDate: pd.Timestamp) -> pd.DataFrame:
+        """
+        PartII-C: 给定起始时间的品种Pnl+排名
+        """
+        startDate = pd.Timestamp(startDate).strftime("%Y.%m.%d")
+        endDate = pd.Timestamp(endDate).strftime("%Y.%m.%d")
+        resultDF = self.session.run(rf"""
+        /* 配置项 */
+        startDate = {startDate};
+        endDate = {endDate};
+        pt = select sum(longMargin) as longMargin, sum(shortMargin) as shortMargin, sum(totalMargin) as totalMargin, 
+                    sum(longComm) as longComm, sum(shortComm) as shortComm, sum(totalComm) as totalComm, 
+                    sum(longPnl) as longPnl, sum(shortPnl) as shortPnl, sum(totalPnl) as totalPnl 
+                    from pnlDetails where tradeTime between startDate and endDate group by symbol
+        resultDF = select *, nullFill((longPnl-longComm)\longMargin,0.0) as longPnlRate, 
+                            nullFill((shortPnl-shortComm)\shortMargin,0.0) as shortPnlRate, 
+                            nullFill((totalPnl-totalComm)\totalMargin,0.0) as totalPnlRate from pt
+        resultDF;
+        """)
+        return resultDF
+
+    def summaryTradeStats(self) -> Dict[str, pd.DataFrame]:
+        """PartIII-A: 交易行为分析
+        including:
+        · 策略累计交易次数(开仓/平仓/总)
+        · 策略时序换手率(每日/每周/每月/每年)
+        """
+        self.session.run("""
+        /* 策略累计交易次数(开仓/平仓/总) */
+        resultDict = dict(STRING, ANY);
+        resultDF = select count(*) as totalTradeNum, sum(iif(state=="open", 1, 0)) as openTradeNum, sum(iif(state=="close", 1, 0)) as closeTradeNum, sum(iif(direction=="long", 1, 0)) as longTradeNum, sum(iif(direction=="short", 1, 0)) as shortTradeNum from tradeDetails group by date(tradeTime) as tradeDate
+        dateList = resultDF[`tradeDate]
+        dropColumns!(resultDF,`tradeDate)
+        resultDF = select dateList as tradeDate, * from cumsum(resultDF)
+        resultDict["tradeNumStats"] = resultDF
+        
+        /* 策略时序换手率(每日/每周/每月/每年) */
+        // TODO: 需要再在restore里面统计一个每日换手率
+        turnoverDF = 
+        """)
+
+    def tradeStatsByPeriod(self, startDate: pd.Timestamp, endDate: pd.Timestamp) -> pd.DataFrame:
+        """
+        PartIII-B: 分品种止盈止损触发次数/概率 + 排名
+        """
+        startDate = pd.Timestamp(startDate).strftime("%Y.%m.%d")
+        endDate = pd.Timestamp(endDate).strftime("%Y.%m.%d")
+        resultDF = self.session.run(rf"""
+        startDate = {startDate}
+        endDate = {endDate}
+        resultDF = select sum(iif(state=="close", 1, 0)) as closeTradeNum, 
+                          sum(iif(reason like "static%" or reason like "dynamic%", 1, 0)) as priceLimitNum, 
+                          sum(iif((state=="close" and direction == "long" and reason=="staticHigh") or 
+                                  (state=="close" and direction == "short" and reason=="staticLow"), 1, 0)) as staticProfitNum, 
+                          sum(iif((state=="close" and direction == "short" and reason=="staticHigh") or 
+                                  (state=="close" and direction == "long" and reason=="staticLow"), 1, 0)) as staticLoseNum
+                   from tradeDetails where date(tradeTime) between startDate and endDate group by symbol
+        update resultDF set staticProfitLimitRate = nullFill(staticProfitNum\priceLimitNum, 0.0) 
+        update resultDF set staticLoseLimitRate = nullFill(staticLoseNum\priceLimitNum, 0.0) 
+        from tradeDetails where date(tradeTime) between startDate and endDate group by symbol
+        resultDF
+        """)
+        return resultDF
