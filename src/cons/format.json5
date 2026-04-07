@@ -1,7 +1,12 @@
 {
-  "statistics": {
+  "config": {
     "runStock": false,
-    "runFuture": false,
+    "runFuture": true,
+    "yearDays": 252,
+    "monthDays": 22,
+    "basicYearlyRet": 0.028, // 无风险利率
+  },
+  "statistics": {
     "indicator": {
       "tradeDateCol": "TradeDate",
       "cashCol": "cash",
