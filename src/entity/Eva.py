@@ -132,7 +132,8 @@ class Eva(Result):
         """
         PartII-B: 分品种Pnl分析
         """
-        resultDF = self.session.run("""
+        resultDF = self.session.run(f"""
+        symbolStr = "{symbol}"
         pt = select tradeTime, pnlRate, commRate, longPnl-longComm as longPnl, shortPnl-shortComm as shortPnl, totalPnl-totalComm as totalPnl from pnlDetails where symbol == symbolStr
         update pt set cumLongPnl = cumsum(longPnl)
         update pt set cumShortPnl = cumsum(shortPnl)
@@ -168,7 +169,7 @@ class Eva(Result):
         · 策略累计交易次数(开仓/平仓/总)
         · 策略时序换手率(每日/每周/每月/每年)
         """
-        self.session.run("""
+        resultDict = self.session.run("""
         /* 策略累计交易次数(开仓/平仓/总) */
         resultDict = dict(STRING, ANY);
         resultDF = select count(*) as totalTradeNum, sum(iif(state=="open", 1, 0)) as openTradeNum, sum(iif(state=="close", 1, 0)) as closeTradeNum, sum(iif(direction=="long", 1, 0)) as longTradeNum, sum(iif(direction=="short", 1, 0)) as shortTradeNum from tradeDetails group by date(tradeTime) as tradeDate
@@ -179,8 +180,11 @@ class Eva(Result):
         
         /* 策略时序换手率(每日/每周/每月/每年) */
         // TODO: 需要再在restore里面统计一个每日换手率
-        turnoverDF = 
+        // turnoverDF = 
+        
+        resultDict
         """)
+        return resultDict
 
     def tradeStatsByPeriod(self, startDate: pd.Timestamp, endDate: pd.Timestamp) -> pd.DataFrame:
         """
@@ -200,7 +204,6 @@ class Eva(Result):
                    from tradeDetails where date(tradeTime) between startDate and endDate group by symbol
         update resultDF set staticProfitLimitRate = nullFill(staticProfitNum\priceLimitNum, 0.0) 
         update resultDF set staticLoseLimitRate = nullFill(staticLoseNum\priceLimitNum, 0.0) 
-        from tradeDetails where date(tradeTime) between startDate and endDate group by symbol
         resultDF
         """)
         return resultDF
