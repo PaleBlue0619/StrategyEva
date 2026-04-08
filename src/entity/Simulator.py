@@ -12,6 +12,7 @@ class Position:
     def __init__(self):
         self.lastTime: pd.Timestamp = pd.Timestamp("1900-01-01")
         self.currentTime: pd.Timestamp = pd.Timestamp("1900-01-01")
+        self.priceDict: Dict[str, float] = {}   # 成交价格-分时
         self.longPos: Dict[str, Dict[str, any]] = {}
         self.shortPos: Dict[str, Dict[str, any]] = {}
         self.longPnl: Dict[str, float] = {}     # 多头Pnl-分时
@@ -20,18 +21,22 @@ class Position:
         self.shortMargin: Dict[str, float] = {} # 空头保证金-分时
         self.longComm: Dict[str, float] = {}    # 多头手续费-分时
         self.shortComm: Dict[str, float] = {}   # 空头手续费-分时
-        self.resultDF: pd.DataFrame = pd.DataFrame({"tradeTime": [], "symbol": [],
+        self.pnlDF: pd.DataFrame = pd.DataFrame({"tradeTime": [], "symbol": [],
                                                     "longPnl": [], "shortPnl": [], "totalPnl":[],
                                                     "longMargin": [], "shortMargin": [], "totalMargin": [],
                                                     "longComm": [], "shortComm": [], "totalComm":[],
                                                     "pnlRate": [], "commRate": []})   # 当前时间戳的pnl & comm 统计
-
+        self.posDF: pd.DataFrame = pd.DataFrame({"tradeTime": [], "symbol":[],
+                                                 "price": [], "longVol": [], "shortVol": [], "totalVol": [],
+                                                 "longPosVal": [], "shortPosVal": [], "totalPosVal": []})
     def openPos(self, timestamp: pd.Timestamp, symbol: str, direction: str, price: float, vol: int,
                 margin: float, comm: float) -> None:
         """开仓/加仓"""
+        self.priceDict[symbol] = price  # 更新价格
         self.currentTime = timestamp    # 更新时间
         if self.currentTime != self.lastTime:
             self.recordPnl()    # 先记录
+            self.recordPos()    # 先记录
             self.lastTime = copy.copy(timestamp)
         pos = {"vol": vol, "price": price, "margin": margin}
         if direction == "long":
@@ -64,9 +69,11 @@ class Position:
     def closePos(self, timestamp: pd.Timestamp, symbol: str, direction: str, price: float, vol: int,
                  margin: float, comm: float) -> None:
         """平仓"""
+        self.priceDict[symbol] = price  # 更新价格
         self.currentTime = timestamp    # 更新时间
         if self.currentTime != self.lastTime:
             self.recordPnl()    # 先记录
+            self.recordPos()    # 先记录
             self.lastTime = copy.copy(timestamp)
         pnl: float = 0.0
         flag = 1.0 if direction == "long" else -1
@@ -134,14 +141,35 @@ class Position:
         resultDF["totalComm"] = resultDF["longComm"] + resultDF["shortComm"]
         resultDF["pnlRate"] = (resultDF["totalPnl"] / resultDF["totalMargin"]).fillna(0.0)
         resultDF["commRate"] = (resultDF["totalComm"] / resultDF["totalMargin"]).fillna(0.0)
-        self.resultDF = pd.concat([self.resultDF, resultDF], ignore_index=True) # 追加写入
-        # 当前状态置0
-        self.longPnl = {} # {i: 0 for i in self.longPnl.keys()}
-        self.shortPnl = {} # {i: 0 for i in self.shortPnl.keys()}
-        self.longMargin = {} # {i: 0 for i in self.longMargin.keys()}
-        self.shortMargin = {} # {i: 0 for i in self.shortMargin.keys()}
-        self.longComm = {} # {i: 0 for i in self.longComm.keys()}
-        self.shortComm = {} # {i: 0 for i in self.shortComm.keys()}
+        self.pnlDF = pd.concat([self.pnlDF, resultDF], ignore_index=True) # 追加写入
+
+    def recordPos(self) -> None:
+        """
+        输出当前持仓为DataFrame格式并追加
+        """
+        symbolList: List[str] = sorted(set(list(self.longPos.keys()) + list(self.shortPos.keys())))
+        resultDF = pd.DataFrame({
+            "tradeTime": [self.lastTime] * len(symbolList),
+            "symbol": symbolList
+        })
+        longVolDict: Dict[str, float] = {}
+        shortVolDict: Dict[str, float] = {}
+        longPosVal: Dict[str, float] = {}
+        shortPosVal: Dict[str, float] = {}
+        for symbol in self.longPos:
+            longVolDict[symbol] = sum([i["vol"] for i in self.longPos[symbol]])
+            longPosVal[symbol] =sum([i["vol"] * i["price"] for i in self.longPos[symbol]])
+        for symbol in self.shortPos:
+            shortVolDict[symbol] = sum([i["vol"] for i in self.shortPos[symbol]])
+            shortPosVal[symbol] =sum([i["vol"] * i["price"] for i in self.shortPos[symbol]])
+        resultDF["price"] = resultDF["symbol"].map(self.priceDict)
+        resultDF["longVol"] = resultDF["symbol"].map(longVolDict).fillna(0.0)
+        resultDF["shortVol"] = resultDF["symbol"].map(shortVolDict).fillna(0.0)
+        resultDF["totalVol"] = resultDF["longVol"] + resultDF["shortVol"]
+        resultDF["longPosVal"] = resultDF["symbol"].map(longPosVal).fillna(0.0)
+        resultDF["shortPosVal"] = resultDF["symbol"].map(shortPosVal).fillna(0.0)
+        resultDF["totalPosVal"] = resultDF["longPosVal"] + resultDF["shortPosVal"]
+        self.posDF = pd.concat([self.posDF, resultDF], ignore_index=True) # 追加写入
 
 class Simulator(Position):
     def __init__(self, session: ddb.session):
@@ -150,21 +178,21 @@ class Simulator(Position):
         self.tradeDetails: pd.DataFrame = pd.DataFrame()
 
     def restore_(self, hasProfitCol: bool) -> None:
-        """还原订单 -> 统计每日每个品种的当日pnl & 累计pnl"""
+        """还原订单 -> 统计每日每个品种的当日pnl & 累计pnl & 持仓量+市值"""
         self.tradeDetails = self.session.run(f"""select * from tradeDetails""")
         self.tradeDetails["tradeTime"] = self.tradeDetails["tradeTime"].apply(pd.Timestamp)
-        if not hasProfitCol:
-            for _, row in self.tradeDetails.iterrows():
-                state = row["state"]
-                if state == "open": # 开仓
-                    self.openPos(timestamp=row["tradeTime"], symbol=row["symbol"], direction=row["direction"],
+        # posDetails的统计必须逐行重构pos进行统计
+        for _, row in self.tradeDetails.iterrows():
+            state = row["state"]
+            if state == "open": # 开仓
+                self.openPos(timestamp=row["tradeTime"], symbol=row["symbol"], direction=row["direction"],
                               price=row["price"], vol=row["vol"], margin=row["margin"], comm=row["comm"])
-                else:
-                    self.closePos(timestamp=row["tradeTime"], symbol=row["symbol"], direction=row["direction"],
+            else:
+                self.closePos(timestamp=row["tradeTime"], symbol=row["symbol"], direction=row["direction"],
                                price=row["price"], vol=row["vol"], margin=row["margin"], comm=row["comm"])
-            self.resultDF = self.resultDF.query("totalPnl!=0").reset_index(drop=True)
-        else:
-            self.resultDF = self.session.run(r"""
+        self.pnlDF = self.pnlDF.query("totalPnl!=0").reset_index(drop=True)
+        if hasProfitCol:
+            self.pnlDF = self.session.run(r"""
             update tradeDetails set margin = 0.0 where state == "open"; // 确保margin只被统计一次
             data = select sum(iif(direction == "long", margin, 0)) as longMargin,
                           sum(iif(direction == "short", margin, 0)) as shortMargin,

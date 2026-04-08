@@ -97,7 +97,7 @@ class Eva(Result):
         update statistics set cumPeriod = cumsum(period)
         resultDict["maxDrawdown"] = exec max(currentDrawDown) from statistics; // 最大回撤
         drawDownDF = select startDate, endDate, nDays, drawDownRate from (select first(tradeDate) as startDate, last(tradeDate) as endDate, count(*) as nDays, max(currentDrawDown) as drawdownRate from statistics group by cumPeriod) where drawDownRate > 0 order by drawDownRate desc
-                
+        resultDict["drawDownDF"] = drawDownDF;
         resultDict
         """)
         return resultDict
@@ -159,6 +159,7 @@ class Eva(Result):
         resultDF = select *, nullFill((longPnl-longComm)\longMargin,0.0) as longPnlRate, 
                             nullFill((shortPnl-shortComm)\shortMargin,0.0) as shortPnlRate, 
                             nullFill((totalPnl-totalComm)\totalMargin,0.0) as totalPnlRate from pt
+        undef(`pt);
         resultDF;
         """)
         return resultDF
@@ -169,7 +170,7 @@ class Eva(Result):
         · 策略累计交易次数(开仓/平仓/总)
         · 策略时序换手率(每日/每周/每月/每年)
         """
-        resultDict = self.session.run("""
+        resultDict = self.session.run(rf"""
         /* 策略累计交易次数(开仓/平仓/总) */
         resultDict = dict(STRING, ANY);
         resultDF = select count(*) as totalTradeNum, sum(iif(state=="open", 1, 0)) as openTradeNum, sum(iif(state=="close", 1, 0)) as closeTradeNum, sum(iif(direction=="long", 1, 0)) as longTradeNum, sum(iif(direction=="short", 1, 0)) as shortTradeNum from tradeDetails group by date(tradeTime) as tradeDate
@@ -178,11 +179,29 @@ class Eva(Result):
         resultDF = select dateList as tradeDate, * from cumsum(resultDF)
         resultDict["tradeNumStats"] = resultDF
         
-        /* 策略时序换手率(每日/每周/每月/每年) */
-        // TODO: 需要再在restore里面统计一个每日换手率
-        // turnoverDF = 
-        
-        resultDict
+        /* 策略时序换手率(每日/每周/每月/每年) 
+        换手率 = (卖出旧仓位总额 + 买入新仓位总额)\(平均总市值)
+        */
+        dailyDF = select sum(iif(state=="open", price*vol, 0.0)) as openVal,
+                  sum(iif(state=="close", price*vol, 0.0)) as closeVal
+            from tradeDetails group by date(tradeTime) as tradeDate
+        posValDF = select sum(totalPosVal) as totalPosVal from posDetails group by date(tradeTime) as tradeDate 
+        dailyDF = lj(dailyDF, posValDF, `tradeDate)
+        update dailyDF set totalPosVal = NULL where totalPosVal == 0
+        update dailyDF set totalPosVal = totalPosVal.ffill(); // 持仓市值向后填充
+        update dailyDF set turnoverRate = nullFill((openVal+closeVal)\totalPosVal,0.0)
+        weekDF = select sum(openVal) as openVal, sum(closeVal) as closeVal, avg(totalPosVal) as totalPosVal
+                from dailyDF group by year(tradeDate) as year, weekOfYear(tradeDate) as week
+        monthDF = select sum(openVal) as openVal, sum(closeVal) as closeVal, avg(totalPosVal) as totalPosVal
+                  from dailyDF group by year(tradeDate) as year, monthOfYear(tradeDate) as month
+        yearDF = select sum(openVal) as openVal, sum(closeVal) as closeVal, avg(totalPosVal) as totalPosVal
+                  from dailyDF group by year(tradeDate) as year
+        resultDict["dailyTurnoverRateStats"] = select tradeDate, nullFill((openVal+closeVal)\totalPosVal,0.0) as turnoverRate from dailyDF;
+        resultDict["weeklyTurnoverRateStats"] = select year, week, nullFill((openVal+closeVal)\totalPosVal,0.0) as turnoverRate from weekDF;
+        resultDict["monthlyTurnoverRateStats"] = select year, month, nullFill((openVal+closeVal)\totalPosVal,0.0) as turnoverRate from monthDF;
+        resultDict["yearlyTurnoverRateStats"] = select year, nullFill((openVal+closeVal)\totalPosVal,0.0) as turnoverRate from yearDF;
+        undef(`weekDF`monthDF`yearDF`dailyDF`posValDF)
+        resultDict;
         """)
         return resultDict
 

@@ -3,17 +3,17 @@ import dolphindb as ddb
 import streamlit as st
 from functools import lru_cache
 from typing import Dict, List
-from src.entity.Table import Statistics, TradeDetails, OrderDetails, PnlDetails
+from src.entity.Table import Statistics, TradeDetails, OrderDetails, OtherDetails
 from src.entity.Simulator import Simulator
 
-class Result(Statistics, TradeDetails, OrderDetails, PnlDetails, Simulator):
+class Result(Statistics, TradeDetails, OrderDetails, OtherDetails, Simulator):
     def __init__(self, session: ddb.session, statistics: pd.DataFrame,
                  tradeDetails: pd.DataFrame, orderDetails: pd.DataFrame,
                  statsCfg: Dict[str, any], orderCfg: Dict[str, any], tradeCfg: Dict[str, any]):
         Statistics.__init__(self, session, statistics)
         TradeDetails.__init__(self, session, tradeDetails)
         OrderDetails.__init__(self, session, orderDetails)
-        PnlDetails.__init__(self, session, pd.DataFrame())
+        OtherDetails.__init__(self, session, pd.DataFrame())
         Simulator.__init__(self, session)
         self.statistics: pd.DataFrame = statistics
         self.tradeDetails: pd.DataFrame = tradeDetails
@@ -38,10 +38,10 @@ class Result(Statistics, TradeDetails, OrderDetails, PnlDetails, Simulator):
 
     def _restore_(self):
         hasProfitCol: bool = True if self.tradeCfg["indicator"]["profitCol"] else False
-        P = PnlDetails(session=self.session, data=self.tradeDetails)
-        P.initTable()
-        P.restore_(hasProfitCol=hasProfitCol)
-        P.upload_()
+        Other = OtherDetails(session=self.session, data=self.tradeDetails)
+        Other.initTable()
+        Other.restore_(hasProfitCol=hasProfitCol)
+        Other.upload_()
 
     def getSymbolList(self, scale: str) -> List[str]:
         """获取所有标的列表(order/trade)"""

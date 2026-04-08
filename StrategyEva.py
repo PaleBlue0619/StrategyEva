@@ -1,4 +1,4 @@
-import os,json,json5
+import os,time,json,json5
 import dolphindb as ddb
 import pandas as pd
 from src.entity.Table import Statistics, OrderDetails, TradeDetails
@@ -15,6 +15,7 @@ if __name__ == "__main__":
     orderDetails = pd.read_excel(r"E:\Quant\PyBackTest\test\classVoteStrategy\OrderDetails(Future).xlsx",index_col=None,header=0)
     tradeDetails = pd.read_excel(r"E:\Quant\PyBackTest\test\classVoteStrategy\TradeDetails(Future).xlsx",index_col=None,header=0)
     tradeDetails["symbol"] = tradeDetails["symbol"].apply(lambda x:str(x).split(".")[0].replace(str(x).split(".")[0][-4:], ""))
+    t0 = time.time()
     EvaObj = Eva(session=session, statsCfg=cfg["statistics"], orderCfg=cfg["orderDetails"], tradeCfg=cfg["tradeDetails"],
                  statistics=statistics, tradeDetails=tradeDetails, orderDetails=orderDetails)
     EvaObj.upload()
@@ -25,7 +26,5 @@ if __name__ == "__main__":
     EvaObj.pnlStatsByPeriod(startDate="20150101", endDate="20270101")
     EvaObj.summaryTradeStats()
     EvaObj.tradeStatsByPeriod(startDate="20150101", endDate="20270101")
-
-    # S.restore(hasProfitCol=False)
-    # print(S.resultDF)
-    # S.resultDF.to_excel(r"result.xlsx",index=False)
+    t1 = time.time()
+    print("StrategyEva总耗时(s)", t1-t0)
