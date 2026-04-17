@@ -62,3 +62,5 @@ class Result(Statistics, TradeDetails, OrderDetails, OtherDetails, Simulator):
             return self.session.run(f"""exec distinct(date(tradeDate)) from statistics""")
         else:
             return sorted(set(self.getDateList(scale="order") + self.getDateList(scale="trade") + self.getDateList(scale="stats")))
+
+

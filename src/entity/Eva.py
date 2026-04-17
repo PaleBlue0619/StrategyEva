@@ -82,10 +82,10 @@ class Eva(Result):
         resultDict["maxUpStreakDays"] = exec maxPositiveStreak(iif(profitDiff>=0, 1, 0)) from statistics_ // 最长连涨天数
         resultDict["maxDownStreakDays"] = exec maxPositiveStreak(iif(profitDiff<=0, 1, 0)) from statistics_ // 最长连跌天数
         resultDict["maxZeroStreakDays"] = exec maxPositiveStreak(iif(profitDiff==0, 1, 0)) from statistics_// 最长不变天数
-        resultDict["sharpeRatio"] = (mean(statistics_["dailyRet"])-basicDailyRet)\stdp(statistics_["dailyRet"])
-        resultDict["shareRatio1"] = ((exec mean(dailyRet) from statistics_ where dailyRet!=0)-basicDailyRet)\(exec stdp(dailyRet) from statistics_ where dailyRet!=0)
-        resultDict["sortinoRatio"] = (mean(statistics_["dailyRet"])-basicDailyRet)\(exec stdp(dailyRet) from statistics_ where dailyRet<0)
-        resultDict["sortinoRatio1"] = ((exec mean(dailyRet) from statistics_ where dailyRet!=0)-basicDailyRet)\(exec stdp(dailyRet) from statistics_ where dailyRet<0)
+        resultDict["sharpeRatio"] = sqrt(yearDays) * (mean(statistics_["dailyRet"])-basicDailyRet)\stdp(statistics_["dailyRet"])
+        resultDict["sharpeRatio1"] = sqrt(yearDays) * ((exec mean(dailyRet) from statistics_ where dailyRet!=0)-basicDailyRet)\(exec stdp(dailyRet) from statistics_ where dailyRet!=0)
+        resultDict["sortinoRatio"] = sqrt(yearDays) * (mean(statistics_["dailyRet"])-basicDailyRet)\(exec stdp(dailyRet) from statistics_ where dailyRet<0)
+        resultDict["sortinoRatio1"] = sqrt(yearDays) * ((exec mean(dailyRet) from statistics_ where dailyRet!=0)-basicDailyRet)\(exec stdp(dailyRet) from statistics_ where dailyRet<0)
         
         // 回撤指标
         update statistics set peak = cummax(netValue); 
