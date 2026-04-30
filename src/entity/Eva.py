@@ -36,15 +36,15 @@ class Eva(Result):
         if (runFuture == 0 and runStock == 1){{
             statistics_ = select * from statistics where stockProfit!=0
             update statistics_ set profitDiff = deltas(stockProfit)
-            update statistics_ set dailyRet = nullFill(profitDiff\prev(stockProfit), 0.0)
+            update statistics_ set dailyRet = nullFill(profitDiff\prev(stockCash), 0.0)
         }}else if(runFuture == 1 and runStock == 0){{
             statistics_ = select * from statistics where futureProfit!=0 
             update statistics_ set profitDiff = deltas(futureProfit)
-            update statistics_ set dailyRet = nullFill(profitDiff\prev(futureProfit), 0.0)
+            update statistics_ set dailyRet = nullFill(profitDiff\prev(futureCash), 0.0)
         }}else{{
             statistics_ = select * from statistics where profit!=0
             update statistics set profitDiff = deltas(profit)
-            update statistics_ set dailyRet = nullFill(profitDiff\prev(profit), 0.0)
+            update statistics_ set dailyRet = nullFill(profitDiff\prev(cash), 0.0)
         }}
         tradeDetails_ = select * from tradeDetails where state="close"
         update statistics set netValue = nullFill((profit-comm)\first(cash),0.0)+1.0; // 计算净值
@@ -63,13 +63,13 @@ class Eva(Result):
         resultDict["orderNum"] = exec count(*) from orderDetails 
         resultDict["longOrderNum"] = exec count(*) from orderDetails where direction == "long"
         resultDict["shortOrderNum"] = exec count(*) from orderDetails where direction == "short"
-        resultDict["tradeNum"] = exec count(*) from pnlDetails
+        resultDict["tradeNum"] = exec count(*) from tradeDetails
         resultDict["openTradeNum"] = exec count(*) from tradeDetails where state == "open"
         resultDict["closeTradeNum"] = exec count(*) from tradeDetails where state == "close"
         resultDict["longTradeNum"] = exec count(*) from tradeDetails where direction == "long"
         resultDict["shortTradeNum"] = exec count(*) from tradeDetails where direction == "short"
         resultDict["winTrade"] = exec count(*) from pnlDetails where totalPnl>0
-        resultDict["winTradeRate"] = nullFill(resultDict["winTrade"]\resultDict["tradeNum"], 0.0)
+        resultDict["winTradeRate"] = nullFill(resultDict["winTrade"]\rows(pnlDetails), 0.0)
         resultDict["sysTradeNum"] = (exec count(*) from tradeDetails) - resultDict["orderNum"]
         resultDict["sysTradeRate"] = nullFill(resultDict["sysTradeNum"]\resultDict["tradeNum"], 0.0)
         
