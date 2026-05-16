@@ -125,14 +125,14 @@ class Plot(Eva):
         leftPart, rightPart = st.columns([7, 3], gap="medium")
         with leftPart:
             st.markdown("**statistics plot**")
-            st.line_chart(self.statistics[["cash","profit","realTimeProfit"]], width='stretch')
+            st.line_chart(self.statistics[["cash","profit","realTimeProfit"]])
             st.divider()    # 分隔线, 展示不同图表
             st.markdown("**maxDrawDown stats**")
             st.dataframe(self.indicatorRes["drawDownDF"])
             st.markdown("**pnlByPeriod plot**")
             st.divider()
             data = self.summaryPnlRes["yearPnl"].set_index("year")
-            st.bar_chart(data[["pnl","profit","comm"]], stack=False, width='stretch')
+            st.bar_chart(data[["pnl","profit","comm"]], stack=False)
             st.area_chart(data[["cumPnl","cumProfit"]])
             data = self.summaryPnlRes["monthPnl"]
             st.plotly_chart(self.heatMap(data, "pnl", idx1Col="year", idx2Col="month", title="pnlByPeriod"), use_container_width=True)
