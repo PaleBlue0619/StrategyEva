@@ -46,9 +46,9 @@ class Result(Statistics, TradeDetails, OrderDetails, OtherDetails, Simulator):
     def getSymbolList(self, scale: str) -> List[str]:
         """获取所有标的列表(order/trade)"""
         if scale == "order":
-            return self.session.run(f"""exec distinct(symbol) from orderDetails""")
+            return self.session.run(f"""exec distinct(symbol) from orderDetails""")  # 合约信息
         elif scale == "trade":
-            return self.session.run(f"""exec distinct(symbol) from tradeDetails""")
+            return self.session.run(f"""exec distinct(symbol) from tradeDetails""")  # 品种信息
         else:
             return sorted(set(self.getSymbolList(scale="order") + self.getSymbolList(scale="trade")))
 

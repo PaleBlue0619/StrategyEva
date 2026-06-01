@@ -19,45 +19,6 @@ class Plot(Eva):
         self.restore()
         self.statistics.set_index("tradeDate",inplace=True)
 
-    # @staticmethod
-    # def heatMap(data: pd.DataFrame, valueCol: str, idx1Col: str, idx2Col: str, title: str):
-    #     # 创建透视表
-    #     pivot_table = data.pivot_table(
-    #         values=valueCol,
-    #         index=idx1Col,
-    #         columns=idx2Col,
-    #         aggfunc='first',
-    #         fill_value=0
-    #         )
-    #     pivot_table = pivot_table.sort_index()
-    #
-    #
-    #     fig = px.imshow(
-    #         pivot_table,
-    #         labels=dict(x=f"{idx2Col}", y=f"{idx1Col}", color=valueCol),
-    #         x=pivot_table.columns,
-    #         y=pivot_table.index,
-    #         title=title,
-    #         color_continuous_scale='RdYlGn',  # 红-黄-绿渐变
-    #         aspect="auto",
-    #         text_auto='.0f'  # 显示数值
-    #     )
-    #
-    #     # 优化布局
-    #     fig.update_layout(
-    #         height=600,
-    #         xaxis_title=f"{idx2Col}",
-    #         yaxis_title=f"{idx1Col}",
-    #         xaxis={'side': 'top'},  # 年份显示在顶部
-    #         coloraxis_colorbar=dict(
-    #             title=valueCol,
-    #             thickness=20,
-    #     )
-    #     )
-    #
-    #     # 调整字体大小
-    #     fig.update_xaxes(tickangle=0)
-    #     return fig
     @staticmethod
     def heatMap(data: pd.DataFrame, valueCol: str, idx1Col: str, idx2Col: str, title: str):
         # 创建透视表
@@ -114,7 +75,38 @@ class Plot(Eva):
 
         return fig
 
-    def indicatorPlot(self):
+    def pnlStatsPlot(self) -> None:
+        """分品种pnl统计(上)+分起始日期pnl统计(下)"""
+        st.set_page_config(layout="wide", page_title="pnlStats")
+        st.title("Pnl统计")
+        # 按总的排序, 然后柱状图堆叠显示longXXX + shortXXX
+        # 基本信息
+        dateList = self.getDateList(scale="statistics")  # 按照pnl盈亏表中的日期范围确定startDate, endDate
+        startDate, endDate = dateList[0], dateList[-1]
+        symbolList = self.getSymbolList(scale="trade")   # 获取品种列表
+        # 主图指标-1: sortBy totalPnlRate
+        st.divider()
+        data = self.pnlStatsByPeriod(startDate=startDate, endDate=endDate)
+        sliceData = data[["symbol", "totalPnlRate",
+                          "longMargin", "shortMargin", "totalMargin",
+                          "longComm", "shortComm", "totalComm",
+                          "longPnl", "shortPnl", "totalPnl"]]
+        sliceData = sliceData.sort_values(by=["totalPnlRate"], ascending=False).set_index("symbol")
+        st.markdown("**totalMargin groupBy symbol orderBy totalPnlRate**")
+        st.bar_chart(sliceData[["longMargin", "shortMargin"]], sort=False, stack=True)
+        st.markdown("**totalComm by symbol orderBy totalPnlRate**")
+        st.bar_chart(sliceData[["longComm", "shortComm"]], sort=False, stack=True)
+        st.markdown("**totalPnl by symbol orderBy totalPnlRate**")
+        st.bar_chart(sliceData[["longPnl", "shortPnl"]], sort=False, stack=True)
+        st.divider()
+
+        # 主图指标-2: totalPnlRate longPnlRate shortPnlRate 三个柱状图
+        sortIndicator2 = st.selectbox(
+                label="请输入排序列",
+                options=("totalPnlRate", "longPnlRate","shortPnlRate")
+            )
+
+    def indicatorPlot(self) -> None:
         """Statistics(左) + Eva指标(右)"""
         if self.indicatorRes == {}:
             self.indicatorRes = self.indicatorStats()
