@@ -128,13 +128,25 @@ class Eva(Result):
         """)
         return resultDict
 
-    def pnlStatsBySymbol(self, symbol: str) -> pd.DataFrame:
+    def pnlStatsBySymbol(self, symbol: str, startDate: pd.Timestamp = None, endDate: pd.Timestamp = None) \
+            -> pd.DataFrame:
         """
         PartII-B: 分品种Pnl分析
         """
+        if not startDate:
+            startDate = self.getDateList(scale="statistics")[0]
+        if not endDate:
+            endDate = self.getDateList(scale="statistics")[-1]
+        startDate = pd.Timestamp(startDate).strftime("%Y.%m.%d")
+        endDate = pd.Timestamp(endDate).strftime("%Y.%m.%d")
         resultDF = self.session.run(f"""
         symbolStr = "{symbol}"
-        pt = select tradeTime, pnlRate, commRate, longPnl-longComm as longPnl, shortPnl-shortComm as shortPnl, totalPnl-totalComm as totalPnl from pnlDetails where symbol == symbolStr
+        dateList = getMarketCalendar("CFFEX", {startDate}, {endDate});
+        res = table(dateList as `tradeTime);
+        pt = select tradeTime, pnlRate, commRate, longPnl-longComm as longPnl, 
+                    shortPnl-shortComm as shortPnl, totalPnl-totalComm as totalPnl 
+                    from pnlDetails where symbol == symbolStr
+        pt = select * from lj(res, pt, `tradeTime).nullFill(0.0)
         update pt set cumLongPnl = cumsum(longPnl)
         update pt set cumShortPnl = cumsum(shortPnl)
         update pt set cumTotalPnl = cumsum(totalPnl)

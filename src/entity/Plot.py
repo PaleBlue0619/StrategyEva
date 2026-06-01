@@ -79,12 +79,12 @@ class Plot(Eva):
         """分品种pnl统计(上)+分起始日期pnl统计(下)"""
         st.set_page_config(layout="wide", page_title="pnlStats")
         st.title("Pnl统计")
-        # 按总的排序, 然后柱状图堆叠显示longXXX + shortXXX
         # 基本信息
         dateList = self.getDateList(scale="statistics")  # 按照pnl盈亏表中的日期范围确定startDate, endDate
         startDate, endDate = dateList[0], dateList[-1]
         symbolList = self.getSymbolList(scale="trade")   # 获取品种列表
-        # 主图指标-1: sortBy totalPnlRate
+
+        # 主图指标-1: pnlStatsByPeriod sortBy totalPnlRate
         st.divider()
         data = self.pnlStatsByPeriod(startDate=startDate, endDate=endDate)
         sliceData = data[["symbol", "totalPnlRate",
@@ -105,6 +105,22 @@ class Plot(Eva):
                 label="请输入排序列",
                 options=("totalPnlRate", "longPnlRate","shortPnlRate")
             )
+
+        # 主图指标-3: pnlStatsBySymbol
+        targetSymbol1 = st.selectbox(
+            label="请输入需要查看的品种1",
+            options=(i for i in symbolList),
+            index=0
+        )
+        targetSymbol2 = st.selectbox(
+            label="请输入需要查看的品种2",
+            options=(i for i in symbolList),
+            index=0
+        )
+        data = self.pnlStatsBySymbol(symbol=targetSymbol1)
+        sliceData = data[["tradeTime", "cumLongPnl", "cumShortPnl", "cumTotalPnl"]]
+        data.set_index("tradeTime", inplace=True)
+        data = self.pnlStatsBySymbol(symbol=targetSymbol2)
 
     def indicatorPlot(self) -> None:
         """Statistics(左) + Eva指标(右)"""
