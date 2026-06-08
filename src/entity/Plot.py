@@ -100,13 +100,7 @@ class Plot(Eva):
         st.bar_chart(sliceData[["longPnl", "shortPnl"]], sort=False, stack=True)
         st.divider()
 
-        # 主图指标-2: totalPnlRate longPnlRate shortPnlRate 三个柱状图
-        sortIndicator2 = st.selectbox(
-                label="请输入排序列",
-                options=("totalPnlRate", "longPnlRate","shortPnlRate")
-            )
-
-        # 主图指标-3: pnlStatsBySymbol
+        # 主图指标-2: pnlStatsBySymbol
         targetSymbol1 = st.selectbox(
             label="请输入需要查看的品种1",
             options=(i for i in symbolList),
