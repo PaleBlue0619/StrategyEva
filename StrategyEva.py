@@ -20,9 +20,9 @@ if __name__ == "__main__":
     PlotObj = Plot(session=session, statsCfg=cfg["statistics"], orderCfg=cfg["orderDetails"], tradeCfg=cfg["tradeDetails"],
                  statistics=statistics, tradeDetails=tradeDetails, orderDetails=orderDetails)
     # PlotObj.indicatorPlot()
-    # PlotObj.pnlStatsPlot()
-    data = PlotObj.pnlStatsBySymbol(symbol="FG")
-    print(data)
+    PlotObj.pnlStatsPlot()
+    # data = PlotObj.pnlStatsBySymbol(symbol="FG")
+    # print(data)
     # PlotObj.summaryTradeStats()
     # PlotObj.tradeStatsByPeriod(startDate="20150101", endDate="20270101")
     # print(df)

@@ -112,15 +112,19 @@ class Plot(Eva):
             options=(i for i in symbolList),
             index=0
         )
+        data = self.pnlStatsBySymbol(symbol=targetSymbol1)
+        sliceData = data[["tradeTime", "cumLongPnl", "cumShortPnl", "cumTotalPnl"]]
+        sliceData.set_index("tradeTime", inplace=True)
+        st.line_chart(sliceData)
         targetSymbol2 = st.selectbox(
             label="请输入需要查看的品种2",
             options=(i for i in symbolList),
             index=0
         )
-        data = self.pnlStatsBySymbol(symbol=targetSymbol1)
-        sliceData = data[["tradeTime", "cumLongPnl", "cumShortPnl", "cumTotalPnl"]]
-        data.set_index("tradeTime", inplace=True)
         data = self.pnlStatsBySymbol(symbol=targetSymbol2)
+        sliceData = data[["tradeTime", "cumLongPnl", "cumShortPnl", "cumTotalPnl"]]
+        sliceData.set_index("tradeTime", inplace=True)
+        st.line_chart(sliceData)
 
     def indicatorPlot(self) -> None:
         """Statistics(左) + Eva指标(右)"""
