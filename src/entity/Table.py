@@ -71,7 +71,12 @@ class OrderDetails(Table):
     def upload_(self):   # 规范状态名称 + dmlStr + 上传 + 改名
         colDict: Dict[str, str] = {self.cfg["indicator"][i]: str(i).replace("Col", "") for i in self.cfg["indicator"]}
         reasonCol = self.cfg["indicator"]["reasonCol"]
-        self.data[reasonCol] = self.data[reasonCol].map({j: i for i, j in self.cfg["reasonState"].items()})
+        stateDict: Dict[str, str] = {j: i for i, j in self.cfg["reasonState"].items() if isinstance(j, str)}
+        stateDict.update(
+            {k: i for i, j in self.cfg["reasonState"].items()
+             if isinstance(j, list) for k in j}
+        )
+        self.data[reasonCol] = self.data[reasonCol].map(stateDict)
         self.data.rename(columns=colDict, inplace=True)
         self.data = self.data[list(colDict.values())]
         self.session.upload({"tab": self.data})
@@ -102,7 +107,12 @@ class TradeDetails(Table):
     def upload_(self):   # 规范状态名称 + dmlStr + 上传 + 改名
         colDict: Dict[str, str] = {self.cfg["indicator"][i]: str(i).replace("Col", "") for i in self.cfg["indicator"]}
         reasonCol = self.cfg["indicator"]["reasonCol"]
-        self.data[reasonCol] = self.data[reasonCol].map({j: i for i, j in self.cfg["reasonState"].items()})
+        stateDict: Dict[str, str] = {j: i for i, j in self.cfg["reasonState"].items() if isinstance(j, str)}
+        stateDict.update(
+            {k: i for i, j in self.cfg["reasonState"].items()
+             if isinstance(j, list) for k in j}
+        )
+        self.data[reasonCol] = self.data[reasonCol].map(stateDict)
         self.data.rename(columns=colDict, inplace=True)
         self.data = self.data[list(colDict.values())]
         self.session.upload({"tab": self.data})

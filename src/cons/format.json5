@@ -61,10 +61,10 @@
       "closeLong": "closeLong",
       "openShort": "openShort",
       "closeShort": "closeShort",
-      "staticHigh": "静态最高价",
-      "staticLow": "静态最低价",
-      "dynamicHigh": "动态最高价",
-      "dynamicLow": "动态最低价",
+      "staticHigh": ["静态最高价", "静态最高价(开盘价成交)"],
+      "staticLow": ["静态最低价", "静态最低价(开盘价成交)"],
+      "dynamicHigh": ["动态最高价", "动态最高价(开盘价成交)"],
+      "dynamicLow": ["动态最低价", "动态最低价(开盘价成交)"],
       "maxPosTime": "最长持仓时间"
     },
     "dmlStr": "" // dml语句 -> dataFrame上传至ddb时候执行

@@ -88,15 +88,24 @@ class Eva(Result):
         resultDict["sortinoRatio1"] = sqrt(yearDays) * ((exec mean(dailyRet) from statistics_ where dailyRet!=0)-basicDailyRet)\(exec stdp(dailyRet) from statistics_ where dailyRet<0)
         
         // 回撤指标
-        update statistics set peak = cummax(netValue); 
-        update statistics set isDrawDown = iif(netValue<peak, 1, 0); //标记是否处于回撤期
-        update statistics set currentDrawDown = 0.0
-        update statistics set currentDrawDown = (peak-netValue)\peak where isDrawDown == 1
+        update statistics set peakPct = cummax(netValue); 
+        update statistics set peakAmt = cummax(profit);
+        update statistics set isDrawDown = iif(netValue<peakPct, 1, 0); //标记是否处于回撤期
+        
+        update statistics set currentDrawDownPct = 0.0
+        update statistics set currentDrawDownPct = (peakPct-netValue)\peakPct where isDrawDown == 1
+        update statistics set currentDrawDownAmt = 0.0
+        update statistics set currentDrawDownAmt = (peakAmt-profit) where isDrawDown == 1
+        
         update statistics set period = 0.0;
         update statistics set period = 1.0 where isDrawDown!=prev(isDrawDown)
         update statistics set cumPeriod = cumsum(period)
-        resultDict["maxDrawdown"] = exec max(currentDrawDown) from statistics; // 最大回撤
-        drawDownDF = select startDate, endDate, nDays, drawDownRate from (select first(tradeDate) as startDate, last(tradeDate) as endDate, count(*) as nDays, max(currentDrawDown) as drawdownRate from statistics group by cumPeriod) where drawDownRate > 0 order by drawDownRate desc
+        resultDict["maxDrawDownPct"] = exec max(currentDrawDownPct) from statistics; // 最大回撤比例
+        resultDict["maxDrawDownAmt"] = exec max(currentDrawDownAmt) from statistics; // 最大回撤金额 
+        drawDownDF = select startDate, endDate, nDays, drawDownPct, drawDownAmt from 
+                    (select first(tradeDate) as startDate, last(tradeDate) as endDate, count(*) as nDays, 
+                        max(currentDrawDownPct) as drawDownPct, max(currentDrawDownAmt) as drawDownAmt 
+                        from statistics group by cumPeriod) where drawDownPct > 0 order by drawDownAmt desc
         resultDict["drawDownDF"] = drawDownDF;
         resultDict
         """)
